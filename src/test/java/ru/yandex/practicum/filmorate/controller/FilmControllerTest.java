@@ -57,7 +57,7 @@ class FilmControllerTest {
         // теперь указываем id в объекте для обновления
         f.setId(1);
 
-        // --- создаём пользователя для лайка (id = 1)
+        // создаём пользователя для лайка (id = 1)
         User u = new User();
         u.setEmail("a@b.com");
         u.setLogin("user1");
@@ -70,7 +70,7 @@ class FilmControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)));
 
-        // --- обновляем фильм
+        // обновляем фильм
         f.setDescription("Desc Updated");
         mvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -122,7 +122,7 @@ class FilmControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id", is(1)));
 
-        // Ставим лайк, чтобы его было что удалять
+        // Ставим лайк, чтобы его было что удалять.
         mvc.perform(put("/films/1/like/1"))
                 .andExpect(status().isOk());
 
