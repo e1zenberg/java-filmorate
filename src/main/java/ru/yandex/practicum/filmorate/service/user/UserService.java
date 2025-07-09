@@ -63,6 +63,20 @@ public class UserService {
     }
 
     /**
+     * Возвращает всех пользователей.
+     */
+    public Collection<User> getAllUsers() {
+        return userStorage.getAllUsers();
+    }
+
+    /**
+     * Возвращает одного пользователя по ID.
+     */
+    public User getUserById(int id) {
+        return userStorage.getUserById(id);
+    }
+
+    /**
      * Добавляет пользователя friendId в друзья пользователя userId, создаёт взаимную связь.
      */
     public void addFriend(int userId, int friendId) {
