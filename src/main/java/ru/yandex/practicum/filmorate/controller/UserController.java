@@ -4,72 +4,77 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.service.user.UserService;
+import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
-import java.time.LocalDate;
-import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Collection;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/users")
 @Slf4j
 public class UserController {
+    private final UserStorage userStorage;
+    private final UserService userService;
 
-    private final Map<Integer, User> users = new HashMap<>();     // in-memory хранилище
-    private final AtomicInteger idGen = new AtomicInteger(0);     // генератор id
+    public UserController(UserStorage userStorage, UserService userService) {
+        this.userStorage = userStorage;
+        this.userService = userService;
+    }
 
     @PostMapping
     public User createUser(@RequestBody User user) {
-        prepareAndValidateUser(user);
-        int id = idGen.incrementAndGet();
-        user.setId(id);
-        users.put(id, user);
-        log.info("Создан пользователь {} (id={})", user.getLogin(), id);
-        return user;
+        // Создаём нового пользователя через хранилище
+        return userStorage.addUser(user);
     }
 
     @PutMapping
     public User updateUser(@RequestBody User user) {
-        prepareAndValidateUser(user);
-        Integer id = user.getId();
-        if (id == null || !users.containsKey(id)) {
-            log.error("Пользователь id={} не найден", id);
-            throw new ValidationException("Пользователь с id=" + id + " не найден");
-        }
-        users.put(id, user);
-        log.info("Обновлён пользователь {} (id={})", user.getLogin(), id);
-        return user;
+        // Обновляем данные пользователя через хранилище
+        return userStorage.updateUser(user);
     }
 
     @GetMapping
     public Collection<User> getAllUsers() {
-        return users.values();
+        return userStorage.getAllUsers();
     }
 
-    // простая подготовка и проверка полей пользователя
-    private void prepareAndValidateUser(User user) {
-        // проверяем email
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            log.error("Неправильный email");
-            throw new ValidationException("Email должен содержать '@' и не быть пустым");
-        }
-        // проверяем login
-        if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
-            log.error("Неправильный login");
-            throw new ValidationException("Login не должен быть пустым или содержать пробелы");
-        }
-        // если имя пустое, используем login
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());
-        }
-        // проверяем, что дата рождения указана
-        if (user.getBirthday() == null) {
-            log.error("Дата рождения не указана");
-            throw new ValidationException("Дата рождения не может быть пустой");
-        }
-        // проверяем, что дата рождения не в будущем
-        if (user.getBirthday().isAfter(LocalDate.now())) {
-            log.error("Дата рождения '{}' указана в будущем", user.getBirthday());
-            throw new ValidationException("Дата рождения не может быть в будущем");
-        }
+    @GetMapping("/{id}")
+    public User getUserById(@PathVariable int id) {
+        // Получаем пользователя по идентификатору
+        return userStorage.getUserById(id);
+    }
+
+    @PutMapping("/{id}/friends/{friendId}")
+    public void addFriend(
+            @PathVariable("id") int userId,
+            @PathVariable int friendId
+    ) {
+        // Добавляем двустороннюю дружбу через сервис
+        userService.addFriend(userId, friendId);
+    }
+
+    @DeleteMapping("/{id}/friends/{friendId}")
+    public void removeFriend(
+            @PathVariable("id") int userId,
+            @PathVariable int friendId
+    ) {
+        // Удаляем дружбу через сервис
+        userService.removeFriend(userId, friendId);
+    }
+
+    @GetMapping("/{id}/friends")
+    public Set<User> getFriends(@PathVariable("id") int userId) {
+        // Возвращаем всех друзей пользователя
+        return userService.getFriends(userId);
+    }
+
+    @GetMapping("/{id}/friends/common/{otherId}")
+    public Set<User> getCommonFriends(
+            @PathVariable("id") int userId,
+            @PathVariable int otherId
+    ) {
+        // Возвращаем общих друзей двух пользователей
+        return userService.getCommonFriends(userId, otherId);
     }
 }
