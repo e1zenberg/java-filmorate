@@ -1,6 +1,7 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.service.film.FilmService;
@@ -54,12 +55,14 @@ public class FilmController {
     }
 
     @DeleteMapping("/{id}/like/{userId}")
-    public void removeLike(
+    public ResponseEntity<Void> removeLike(
             @PathVariable("id") int filmId,
             @PathVariable int userId
     ) {
         // Убираем лайк через сервис
         filmService.removeLike(filmId, userId);
+        // Явно возвращаем 200 OK, чтобы MockMvc не воспринимал void как 404
+        return ResponseEntity.ok().build();
     }
 
     @GetMapping("/popular")

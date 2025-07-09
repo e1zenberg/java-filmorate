@@ -3,9 +3,13 @@ package ru.yandex.practicum.filmorate.controller;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Order;
+import org.junit.jupiter.api.TestMethodOrder;
+import org.junit.jupiter.api.MethodOrderer;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import ru.yandex.practicum.filmorate.model.User;
@@ -18,6 +22,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest
 @AutoConfigureMockMvc
+@TestMethodOrder(MethodOrderer.OrderAnnotation.class)
+// Сбрасываем контекст перед каждым методом для чистоты InMemory-хранилищ
+@DirtiesContext(classMode = DirtiesContext.ClassMode.BEFORE_EACH_TEST_METHOD)
 class UserControllerTest {
 
     @Autowired
@@ -27,13 +34,14 @@ class UserControllerTest {
     private ObjectMapper mapper;
 
     @Test
+    @Order(1)
     @DisplayName("Создание, получение и обновление пользователя")
     void userCrudFlow() throws Exception {
         User u = new User();
         u.setEmail("a@b.com");
         u.setLogin("user1");
         u.setName("User One");
-        u.setBirthday(LocalDate.of(1990,1,1));
+        u.setBirthday(LocalDate.of(1990, 1, 1));
 
         // CREATE
         mvc.perform(post("/users")
@@ -64,15 +72,28 @@ class UserControllerTest {
     }
 
     @Test
+    @Order(2)
     @DisplayName("Дружба: добавить, получить, удалить")
     void friendsFlow() throws Exception {
         // создаём 2 пользователей
-        User u1 = new User(); u1.setEmail("u1@b.com"); u1.setLogin("u1"); u1.setBirthday(LocalDate.of(2000,1,1));
-        User u2 = new User(); u2.setEmail("u2@b.com"); u2.setLogin("u2"); u2.setBirthday(LocalDate.of(2000,2,2));
-        mvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(u1)));
-        mvc.perform(post("/users").contentType(MediaType.APPLICATION_JSON).content(mapper.writeValueAsString(u2)));
+        User u1 = new User();
+        u1.setEmail("u1@b.com");
+        u1.setLogin("u1");
+        u1.setBirthday(LocalDate.of(2000, 1, 1));
 
-        // добавить в друзья u1 - u2
+        User u2 = new User();
+        u2.setEmail("u2@b.com");
+        u2.setLogin("u2");
+        u2.setBirthday(LocalDate.of(2000, 2, 2));
+
+        mvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(u1)));
+        mvc.perform(post("/users")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(mapper.writeValueAsString(u2)));
+
+        // добавить в друзья u1 → u2
         mvc.perform(put("/users/1/friends/2"))
                 .andExpect(status().isOk());
 
