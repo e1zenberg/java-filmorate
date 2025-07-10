@@ -13,6 +13,8 @@ import java.util.List;
 @RequestMapping("/films")
 @Slf4j
 public class FilmController {
+    private static final String LIKE_PATH = "/{id}/like/{userId}";
+
     private final FilmService filmService;
 
     public FilmController(FilmService filmService) {
@@ -54,7 +56,7 @@ public class FilmController {
     /**
      * Ставит лайк фильму.
      */
-    @PutMapping("/{id}/like/{userId}")
+    @PutMapping(LIKE_PATH)
     public void addLike(
             @PathVariable("id") int filmId,
             @PathVariable int userId
@@ -65,7 +67,7 @@ public class FilmController {
     /**
      * Убирает лайк с фильма.
      */
-    @DeleteMapping("/{id}/like/{userId}")
+    @DeleteMapping(LIKE_PATH)
     public ResponseEntity<Void> removeLike(
             @PathVariable("id") int filmId,
             @PathVariable int userId
