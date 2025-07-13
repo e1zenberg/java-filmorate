@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.service.film;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
@@ -12,18 +11,24 @@ import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
 import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
 
 import java.time.LocalDate;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class FilmServiceImpl implements FilmService {
     private static final LocalDate EARLIEST_RELEASE = LocalDate.of(1895, 12, 28);
 
     private final FilmStorage filmStorage;
     private final MpaStorage mpaStorage;
     private final GenreStorage genreStorage;
+
+    public FilmServiceImpl(FilmStorage filmStorage,
+                           MpaStorage mpaStorage,
+                           GenreStorage genreStorage) {
+        this.filmStorage = filmStorage;
+        this.mpaStorage = mpaStorage;
+        this.genreStorage = genreStorage;
+    }
 
     // добавить фильм
     @Override
@@ -36,7 +41,7 @@ public class FilmServiceImpl implements FilmService {
     // обновить фильм
     @Override
     public Film updateFilm(Film film) {
-        int id = (int) film.getId();                   // cast long→int
+        int id = (int) film.getId();  // cast long→int
         // проверить, что фильм существует
         if (filmStorage.getFilmById(id) == null) {
             throw new NotFoundException("Film with id=" + id + " not found");
@@ -59,13 +64,15 @@ public class FilmServiceImpl implements FilmService {
     // получить все фильмы
     @Override
     public List<Film> getAllFilms() {
-        return List.copyOf(filmStorage.getAllFilms());
+        // преобразовать Collection → List
+        return new ArrayList<>(filmStorage.getAllFilms());
     }
 
-    // поставить лайк
+    // добавить лайк
     @Override
     public void addLike(int filmId, int userId) {
-        getFilmById(filmId);                          // проверка существования
+        // проверка существования фильма
+        getFilmById(filmId);
         filmStorage.addLike(filmId, userId);
     }
 
@@ -79,20 +86,22 @@ public class FilmServiceImpl implements FilmService {
     // топ популярных
     @Override
     public List<Film> getPopular(int count) {
-        return List.copyOf(filmStorage.getPopular(count));
+        // List уже возвращает storage
+        return filmStorage.getPopular(count);
     }
 
-    // ---- вспомогательные методы ----
+    // --- вспомогательные методы ---
 
-    // валидация полей фильма
+    // базовая валидация полей фильма
     private void validateFilm(Film film) {
         if (film.getName() == null || film.getName().isBlank()) {
             throw new ValidationException("Название фильма не может быть пустым");
         }
-        if (film.getDescription() == null || film.getDescription().length() > 200) {
+        if (film.getDescription() != null && film.getDescription().length() > 200) {
             throw new ValidationException("Description must be up to 200 characters");
         }
-        if (film.getReleaseDate() == null || film.getReleaseDate().isBefore(EARLIEST_RELEASE)) {
+        if (film.getReleaseDate() == null
+                || film.getReleaseDate().isBefore(EARLIEST_RELEASE)) {
             throw new ValidationException("Release date must be on or after 1895-12-28");
         }
         if (film.getDuration() <= 0) {
@@ -100,8 +109,9 @@ public class FilmServiceImpl implements FilmService {
         }
     }
 
-    // загрузка полного MPA и Genres, проверка существования
+    // загрузка полного MPA и жанров, проверка существования
     private void enrichMpaAndGenres(Film film) {
+        // MPA
         int mpaId = film.getMpa().getId();
         Mpa mpa = mpaStorage.getMpaById(mpaId);
         if (mpa == null) {
@@ -109,17 +119,16 @@ public class FilmServiceImpl implements FilmService {
         }
         film.setMpa(mpa);
 
-        Set<Genre> genres = new HashSet<>();
-        if (film.getGenres() != null) {
-            for (Genre g : film.getGenres()) {
-                int genreId = g.getId();
-                Genre genre = genreStorage.getGenreById(genreId);
-                if (genre == null) {
-                    throw new NotFoundException("Genre with id=" + genreId + " not found");
-                }
-                genres.add(genre);
-            }
-        }
+        // Genres: убрать дубликаты, загрузить полные объекты, отсортировать по id
+        Set<Genre> genres = Optional.ofNullable(film.getGenres()).orElse(Set.of()).stream()
+                .map(g -> {
+                    Genre existing = genreStorage.getGenreById(g.getId());
+                    if (existing == null) {
+                        throw new NotFoundException("Genre with id=" + g.getId() + " not found");
+                    }
+                    return existing;
+                })
+                .collect(Collectors.toCollection(() -> new TreeSet<>(Comparator.comparingInt(Genre::getId))));
         film.setGenres(genres);
     }
 }
