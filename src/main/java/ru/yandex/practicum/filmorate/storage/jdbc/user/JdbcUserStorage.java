@@ -11,13 +11,13 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.sql.Date;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.util.Collection;
+import java.util.List;
 
-/**
- * JDBC-реализация хранилища пользователей с использованием JdbcTemplate.
- */
 @Repository
-@Primary  // Делает этот бин предпочтительным при автосвязывании UserStorage
+@Primary
 public class JdbcUserStorage implements UserStorage {
     private final JdbcTemplate jdbcTemplate;
 
@@ -27,19 +27,16 @@ public class JdbcUserStorage implements UserStorage {
 
     @Override
     public User addUser(User user) {
-        // Вставляем нового пользователя и получаем сгенерированный ключ (ID)
         String sql = "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
-
-        jdbcTemplate.update(connection -> {
-            PreparedStatement ps = connection.prepareStatement(sql, new String[]{"id"});
+        jdbcTemplate.update(conn -> {
+            PreparedStatement ps = conn.prepareStatement(sql, new String[]{"user_id"});
             ps.setString(1, user.getEmail());
             ps.setString(2, user.getLogin());
             ps.setString(3, user.getName());
             ps.setDate(4, Date.valueOf(user.getBirthday()));
             return ps;
         }, keyHolder);
-
         int newId = keyHolder.getKey().intValue();
         user.setId(newId);
         return user;
@@ -47,15 +44,13 @@ public class JdbcUserStorage implements UserStorage {
 
     @Override
     public User updateUser(User user) {
-        // Обновляем существующего пользователя по ID
-        String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
+        String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE user_id = ?";
         int updated = jdbcTemplate.update(sql,
                 user.getEmail(),
                 user.getLogin(),
                 user.getName(),
                 Date.valueOf(user.getBirthday()),
                 user.getId());
-
         if (updated == 0) {
             throw new NotFoundException("User with id=" + user.getId() + " not found");
         }
@@ -64,35 +59,68 @@ public class JdbcUserStorage implements UserStorage {
 
     @Override
     public Collection<User> getAllUsers() {
-        // Получаем всех пользователей
-        String sql = "SELECT id, email, login, name, birthday FROM users";
-        return jdbcTemplate.query(sql, (rs, rowNum) -> {
-            User u = new User();
-            u.setId(rs.getInt("id"));
-            u.setEmail(rs.getString("email"));
-            u.setLogin(rs.getString("login"));
-            u.setName(rs.getString("name"));
-            u.setBirthday(rs.getDate("birthday").toLocalDate());
-            return u;
-        });
+        String sql = "SELECT user_id, email, login, name, birthday FROM users";
+        return jdbcTemplate.query(sql, this::mapRowToUser);
     }
 
     @Override
     public User getUserById(int id) {
-        // Получаем одного пользователя по ID
-        String sql = "SELECT id, email, login, name, birthday FROM users WHERE id = ?";
-        return jdbcTemplate.query(sql, rs -> {
-            if (rs.next()) {
-                User u = new User();
-                u.setId(rs.getInt("id"));
-                u.setEmail(rs.getString("email"));
-                u.setLogin(rs.getString("login"));
-                u.setName(rs.getString("name"));
-                u.setBirthday(rs.getDate("birthday").toLocalDate());
-                return u;
-            } else {
-                throw new NotFoundException("User with id=" + id + " not found");
-            }
-        }, id);
+        String sql = "SELECT user_id, email, login, name, birthday FROM users WHERE user_id = ?";
+        List<User> users = jdbcTemplate.query(sql, this::mapRowToUser, id);
+        if (users.isEmpty()) {
+            throw new NotFoundException("User with id=" + id + " not found");
+        }
+        return users.get(0);
+    }
+
+    @Override
+    public void addFriend(int userId, int friendId) {
+        // Проверяем, что оба пользователя существуют
+        getUserById(userId);
+        getUserById(friendId);
+        String sql = "INSERT INTO friends (user_id, friend_id, status) VALUES (?, ?, 'CONFIRMED')";
+        jdbcTemplate.update(sql, userId, friendId);
+    }
+
+    @Override
+    public void removeFriend(int userId, int friendId) {
+        String sql = "DELETE FROM friends WHERE user_id = ? AND friend_id = ?";
+        jdbcTemplate.update(sql, userId, friendId);
+    }
+
+    @Override
+    public List<User> getFriends(int userId) {
+        String sql = """
+            SELECT u.user_id, u.email, u.login, u.name, u.birthday
+              FROM users u
+              JOIN friends f ON u.user_id = f.friend_id
+             WHERE f.user_id = ?
+             ORDER BY u.user_id
+            """;
+        return jdbcTemplate.query(sql, this::mapRowToUser, userId);
+    }
+
+    @Override
+    public List<User> getCommonFriends(int userId, int otherUserId) {
+        String sql = """
+            SELECT u.user_id, u.email, u.login, u.name, u.birthday
+              FROM users u
+              JOIN friends f1 ON u.user_id = f1.friend_id
+              JOIN friends f2 ON u.user_id = f2.friend_id
+             WHERE f1.user_id = ? AND f2.user_id = ?
+             ORDER BY u.user_id
+            """;
+        return jdbcTemplate.query(sql, this::mapRowToUser, userId, otherUserId);
+    }
+
+    /** Маппер User из ResultSet */
+    private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {
+        User u = new User();
+        u.setId(rs.getInt("user_id"));
+        u.setEmail(rs.getString("email"));
+        u.setLogin(rs.getString("login"));
+        u.setName(rs.getString("name"));
+        u.setBirthday(rs.getDate("birthday").toLocalDate());
+        return u;
     }
 }

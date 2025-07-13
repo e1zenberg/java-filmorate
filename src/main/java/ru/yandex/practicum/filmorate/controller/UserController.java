@@ -1,13 +1,18 @@
 package ru.yandex.practicum.filmorate.controller;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.service.user.UserService;
 
 import java.util.Collection;
-import java.util.Set;
+import java.util.List;
 
+/**
+ * REST-контроллер для работы с пользователями:
+ * создание, обновление, получение и управление дружбой.
+ */
 @RestController
 @RequestMapping("/users")
 @Slf4j
@@ -19,75 +24,85 @@ public class UserController {
     }
 
     /**
-     * Создаёт нового пользователя с валидацией.
+     * POST /users — создать нового пользователя.
      */
     @PostMapping
     public User createUser(@RequestBody User user) {
-        return userService.createUser(user);
+        log.info("Создание пользователя: {}", user);
+        return userService.addUser(user);
     }
 
     /**
-     * Обновляет существующего пользователя с валидацией.
+     * PUT /users — обновить информацию о пользователе.
      */
     @PutMapping
     public User updateUser(@RequestBody User user) {
+        log.info("Обновление пользователя: {}", user);
         return userService.updateUser(user);
     }
 
     /**
-     * Возвращает всех пользователей.
+     * GET /users — получить список всех пользователей.
      */
     @GetMapping
     public Collection<User> getAllUsers() {
+        log.info("Запрос списка всех пользователей");
         return userService.getAllUsers();
     }
 
     /**
-     * Возвращает пользователя по ID.
+     * GET /users/{id} — получить пользователя по ID.
      */
     @GetMapping("/{id}")
     public User getUserById(@PathVariable int id) {
+        log.info("Запрос пользователя по ID={}", id);
         return userService.getUserById(id);
     }
 
     /**
-     * Добавляет в друзья.
+     * PUT /users/{id}/friends/{friendId} — добавить в друзья.
      */
     @PutMapping("/{id}/friends/{friendId}")
-    public void addFriend(
+    public ResponseEntity<Void> addFriend(
             @PathVariable("id") int userId,
             @PathVariable int friendId
     ) {
+        log.info("Пользователь {} добавляет в друзья пользователя {}", userId, friendId);
         userService.addFriend(userId, friendId);
+        return ResponseEntity.ok().build();
     }
 
     /**
-     * Удаляет из друзей.
+     * DELETE /users/{id}/friends/{friendId} — убрать из друзей.
      */
     @DeleteMapping("/{id}/friends/{friendId}")
-    public void removeFriend(
+    public ResponseEntity<Void> removeFriend(
             @PathVariable("id") int userId,
             @PathVariable int friendId
     ) {
+        log.info("Пользователь {} удаляет из друзей пользователя {}", userId, friendId);
         userService.removeFriend(userId, friendId);
+        return ResponseEntity.ok().build();
     }
 
     /**
-     * Список друзей пользователя.
+     * GET /users/{id}/friends — список всех друзей пользователя.
      */
     @GetMapping("/{id}/friends")
-    public Set<User> getFriends(@PathVariable("id") int userId) {
+    public List<User> getFriends(@PathVariable("id") int userId) {
+        log.info("Запрос списка друзей пользователя {}", userId);
         return userService.getFriends(userId);
     }
 
     /**
-     * Список общих друзей двух пользователей.
+     * GET /users/{id}/friends/common/{otherId} — общие друзья двух пользователей.
      */
     @GetMapping("/{id}/friends/common/{otherId}")
-    public Set<User> getCommonFriends(
+    public List<User> getCommonFriends(
             @PathVariable("id") int userId,
-            @PathVariable int otherId
+            @PathVariable("otherId") int otherUserId
     ) {
-        return userService.getCommonFriends(userId, otherId);
+        log.info("Запрос общих друзей пользователей {} и {}", userId, otherUserId);
+        return userService.getCommonFriends(userId, otherUserId);
     }
 }
