@@ -13,6 +13,7 @@ import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -52,7 +53,7 @@ public class FilmServiceImpl implements FilmService {
                     }
                     return found;
                 })
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         film.setGenres(genres);
 
         return filmStorage.addFilm(film);
@@ -82,7 +83,7 @@ public class FilmServiceImpl implements FilmService {
                     }
                     return found;
                 })
-                .collect(Collectors.toSet());
+                .collect(Collectors.toCollection(LinkedHashSet::new));
         film.setGenres(genres);
 
         return filmStorage.updateFilm(film);
@@ -124,8 +125,8 @@ public class FilmServiceImpl implements FilmService {
         if (film.getDescription() == null || film.getDescription().length() > 200) {
             throw new ValidationException("Description must be up to 200 characters");
         }
-        if (film.getReleaseDate() == null ||
-                film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+        if (film.getReleaseDate() == null
+                || film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             throw new ValidationException("Release date must be on or after 1895-12-28");
         }
         if (film.getDuration() <= 0) {
