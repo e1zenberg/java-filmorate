@@ -67,8 +67,7 @@ class FilmControllerTest {
                         """))
                 .andExpect(status().isOk());
 
-        //
-        //ПРОЧИТАТЬ ВСЕ
+        // ПРОЧИТАТЬ ВСЕ
         mockMvc.perform(get("/films"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Title"));

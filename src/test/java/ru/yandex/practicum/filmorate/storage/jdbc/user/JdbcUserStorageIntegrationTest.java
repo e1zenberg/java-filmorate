@@ -58,9 +58,9 @@ class JdbcUserStorageIntegrationTest {
     @Test
     @DisplayName("Friendship: add/remove/get/common")
     void friendshipOperations() {
-        User u1 = userStorage.addUser(newUser("u1","u1@x.com"));
-        User u2 = userStorage.addUser(newUser("u2","u2@x.com"));
-        User u3 = userStorage.addUser(newUser("u3","u3@x.com"));
+        User u1 = userStorage.addUser(newUser("u1", "u1@x.com"));
+        User u2 = userStorage.addUser(newUser("u2", "u2@x.com"));
+        User u3 = userStorage.addUser(newUser("u3", "u3@x.com"));
 
         userStorage.addFriend(u1.getId(), u2.getId());
         userStorage.addFriend(u1.getId(), u3.getId());
