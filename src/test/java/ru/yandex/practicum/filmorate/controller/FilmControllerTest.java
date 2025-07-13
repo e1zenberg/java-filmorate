@@ -60,19 +60,8 @@ class FilmControllerTest {
         // CREATE
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(
-                                """
-                                        {
-                                          "id":0,
-                                          "name":"Title",
-                                          "description":"Desc",
-                                          "releaseDate":"2000-01-01",
-                                          "duration":100,
-                                          "mpa":{"id":1},
-                                          "genres":[]
-                                        }
-                                        """
-                        )
+                        .content("{\"id\":0,\"name\":\"Title\",\"description\":\"Desc\"," +
+                                "\"releaseDate\":\"2000-01-01\",\"duration\":100,\"mpa\":{\"id\":1},\"genres\":[]}")
                 )
                 .andExpect(status().isOk());
 
@@ -89,19 +78,8 @@ class FilmControllerTest {
         // UPDATE
         mockMvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(
-                                """
-                                        {
-                                          "id":0,
-                                          "name":"Title",
-                                          "description":"Desc",
-                                          "releaseDate":"2000-01-01",
-                                          "duration":100,
-                                          "mpa":{"id":1},
-                                          "genres":[]
-                                        }
-                                        """
-                        )
+                        .content("{\"id\":0,\"name\":\"Title\",\"description\":\"Desc\"," +
+                                "\"releaseDate\":\"2000-01-01\",\"duration\":100,\"mpa\":{\"id\":1},\"genres\":[]}")
                 )
                 .andExpect(status().isOk());
 
