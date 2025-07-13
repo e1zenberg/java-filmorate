@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.controller;
 
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
@@ -17,12 +18,16 @@ import java.util.Set;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Юнит-тесты контроллера фильмов.
- * JSON теперь содержит "mpa" и пустой массив "genres".
+ * Unit tests for {@link FilmController} covering CRUD and like operations.
+ * JSON payload includes "mpa" and an empty "genres" array.
  */
 @WebMvcTest(FilmController.class)
 class FilmControllerTest {
@@ -34,73 +39,81 @@ class FilmControllerTest {
     private FilmService filmService;
 
     @Test
-    void filmCrudAndPopular() throws Exception {
-        Film film = new Film(
+    @DisplayName("CRUD operations and popular films endpoint")
+    void shouldPerformCrudAndReturnPopular() throws Exception {
+        Film sampleFilm = new Film(
                 0L,
                 "Title",
                 "Desc",
                 LocalDate.of(2000, 1, 1),
                 100,
                 new Mpa(1, "G"),
-                Set.of()                // Set<Genre>, а не List
+                Set.of()
         );
 
-        when(filmService.addFilm(any(Film.class))).thenReturn(film);
-        when(filmService.getAllFilms()).thenReturn(List.of(film));
-        when(filmService.getFilmById(0)).thenReturn(film);
-        when(filmService.updateFilm(any(Film.class))).thenReturn(film);
-        when(filmService.getPopular(10)).thenReturn(List.of(film));
+        when(filmService.addFilm(any(Film.class))).thenReturn(sampleFilm);
+        when(filmService.getAllFilms()).thenReturn(List.of(sampleFilm));
+        when(filmService.getFilmById(0)).thenReturn(sampleFilm);
+        when(filmService.updateFilm(any(Film.class))).thenReturn(sampleFilm);
+        when(filmService.getPopular(10)).thenReturn(List.of(sampleFilm));
 
-        // СОЗДАТЬ
+        // CREATE
         mockMvc.perform(post("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                        {
-                          "id":0,
-                          "name":"Title",
-                          "description":"Desc",
-                          "releaseDate":"2000-01-01",
-                          "duration":100,
-                          "mpa":{"id":1},
-                          "genres":[]
-                        }
-                        """))
+                        .content(
+                                """
+                                        {
+                                          "id":0,
+                                          "name":"Title",
+                                          "description":"Desc",
+                                          "releaseDate":"2000-01-01",
+                                          "duration":100,
+                                          "mpa":{"id":1},
+                                          "genres":[]
+                                        }
+                                        """
+                        )
+                )
                 .andExpect(status().isOk());
 
-        // ПРОЧИТАТЬ ВСЕ
+        // READ ALL
         mockMvc.perform(get("/films"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Title"));
 
-        // ЧИТАЕМ ПО ID
+        // READ BY ID
         mockMvc.perform(get("/films/0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Title"));
 
-        // ОБНОВЛЕНИЕ
+        // UPDATE
         mockMvc.perform(put("/films")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                        {
-                          "id":0,
-                          "name":"Title",
-                          "description":"Desc",
-                          "releaseDate":"2000-01-01",
-                          "duration":100,
-                          "mpa":{"id":1},
-                          "genres":[]
-                        }
-                        """))
+                        .content(
+                                """
+                                        {
+                                          "id":0,
+                                          "name":"Title",
+                                          "description":"Desc",
+                                          "releaseDate":"2000-01-01",
+                                          "duration":100,
+                                          "mpa":{"id":1},
+                                          "genres":[]
+                                        }
+                                        """
+                        )
+                )
                 .andExpect(status().isOk());
 
-        // ПОПУЛЯРНЫЕ
+        // POPULAR
         mockMvc.perform(get("/films/popular?count=10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].name").value("Title"));
     }
 
     @Test
-    void removeLike() throws Exception {
+    @DisplayName("Add and remove like endpoints")
+    void shouldAddAndRemoveLike() throws Exception {
         doNothing().when(filmService).addLike(1, 2);
         doNothing().when(filmService).removeLike(1, 2);
 
