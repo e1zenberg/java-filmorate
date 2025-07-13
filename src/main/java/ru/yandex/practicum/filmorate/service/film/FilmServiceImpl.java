@@ -1,4 +1,3 @@
-// src/main/java/ru/yandex/practicum/filmorate/service/film/FilmServiceImpl.java
 package ru.yandex.practicum.filmorate.service.film;
 
 import org.springframework.stereotype.Service;
