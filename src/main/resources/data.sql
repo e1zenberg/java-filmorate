@@ -3,5 +3,5 @@
 INSERT INTO films (id, name, description, release_date, duration) VALUES
     (1, 'The Matrix', 'Sci-fi action', '1999-03-31', 136);
 
--- НЕ вставляем ни одного пользователя —
--- тогда при первом POST /users они получат id = 1, 2, … как ожидают ваши тесты.
+-- Чтобы следующий авто-инкремент дал 2 (а не снова 1), сбрасываем счётчик:
+ALTER TABLE films ALTER COLUMN id RESTART WITH 2;
