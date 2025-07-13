@@ -5,132 +5,116 @@ import org.springframework.stereotype.Service;
 import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.Film;
-import ru.yandex.practicum.filmorate.model.Genre;
-import ru.yandex.practicum.filmorate.model.Mpa;
 import ru.yandex.practicum.filmorate.storage.film.FilmStorage;
-import ru.yandex.practicum.filmorate.storage.genre.GenreStorage;
-import ru.yandex.practicum.filmorate.storage.mpa.MpaStorage;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
+/**
+ * Сервисная реализация для работы с фильмами.
+ */
 @Service
 public class FilmServiceImpl implements FilmService {
+    // Хранилище фильмов (например, JDBC, в памяти и т.п.)
     private final FilmStorage filmStorage;
-    private final MpaStorage mpaStorage;
-    private final GenreStorage genreStorage;
 
+    /**
+     * Внедрение FilmStorage через конструктор.
+     */
     @Autowired
-    public FilmServiceImpl(FilmStorage filmStorage,
-                           MpaStorage mpaStorage,
-                           GenreStorage genreStorage) {
+    public FilmServiceImpl(FilmStorage filmStorage) {
         this.filmStorage = filmStorage;
-        this.mpaStorage = mpaStorage;
-        this.genreStorage = genreStorage;
     }
 
+    /**
+     * Добавляет новый фильм в хранилище после валидации.
+     */
     @Override
     public Film addFilm(Film film) {
-        validateFilm(film);
-
-        Mpa mpa = mpaStorage.getMpaById(film.getMpa().getId());
-        if (mpa == null) {
-            throw new NotFoundException("MPA id=" + film.getMpa().getId() + " not found");
-        }
-        film.setMpa(mpa);
-
-        Set<Genre> genres = film.getGenres() == null
-                ? Set.of()
-                : film.getGenres().stream()
-                .map(g -> {
-                    Genre found = genreStorage.getGenreById(g.getId());
-                    if (found == null) {
-                        throw new NotFoundException("Genre id=" + g.getId() + " not found");
-                    }
-                    return found;
-                })
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        film.setGenres(genres);
-
-        return filmStorage.addFilm(film);
+        validateFilm(film);                     // проверяем поля
+        return filmStorage.addFilm(film);       // сохраняем и возвращаем
     }
 
+    /**
+     * Обновляет существующий фильм.
+     * Если фильм не найден — бросает NotFoundException.
+     */
     @Override
     public Film updateFilm(Film film) {
-        int id = (int) film.getId();
-        if (filmStorage.getFilmById(id) == null) {
-            throw new NotFoundException("Film id=" + film.getId() + " not found");
+        int id = (int) film.getId();            // приводим long в int
+        Film existing = filmStorage.getFilmById(id);
+        if (existing == null) {
+            throw new NotFoundException("Film with id=" + id + " not found");
         }
-        validateFilm(film);
-
-        Mpa mpa = mpaStorage.getMpaById(film.getMpa().getId());
-        if (mpa == null) {
-            throw new NotFoundException("MPA id=" + film.getMpa().getId() + " not found");
-        }
-        film.setMpa(mpa);
-
-        Set<Genre> genres = film.getGenres() == null
-                ? Set.of()
-                : film.getGenres().stream()
-                .map(g -> {
-                    Genre found = genreStorage.getGenreById(g.getId());
-                    if (found == null) {
-                        throw new NotFoundException("Genre id=" + g.getId() + " not found");
-                    }
-                    return found;
-                })
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        film.setGenres(genres);
-
-        return filmStorage.updateFilm(film);
+        validateFilm(film);                     // проверяем поля
+        return filmStorage.updateFilm(film);    // обновляем и возвращаем
     }
 
-    @Override
-    public List<Film> getAllFilms() {
-        return new ArrayList<>(filmStorage.getAllFilms());
-    }
-
+    /**
+     * Возвращает фильм по ID или бросает NotFoundException.
+     */
     @Override
     public Film getFilmById(int id) {
         Film film = filmStorage.getFilmById(id);
         if (film == null) {
-            throw new NotFoundException("Film id=" + id + " not found");
+            throw new NotFoundException("Film with id=" + id + " not found");
         }
         return film;
     }
 
+    /**
+     * Возвращает список всех фильмов.
+     */
+    @Override
+    public List<Film> getAllFilms() {
+        return List.copyOf(filmStorage.getAllFilms());
+    }
+
+    /**
+     * Возвращает список популярных фильмов,
+     * ограниченный count штук.
+     */
+    @Override
+    public List<Film> getPopular(int count) {
+        return List.copyOf(filmStorage.getPopular(count));
+    }
+
+    /**
+     * Добавляет запись о лайке фильма пользователем.
+     */
     @Override
     public void addLike(int filmId, int userId) {
         filmStorage.addLike(filmId, userId);
     }
 
+    /**
+     * Удаляет лайк фильма от пользователя.
+     */
     @Override
     public void removeLike(int filmId, int userId) {
         filmStorage.removeLike(filmId, userId);
     }
 
-    @Override
-    public List<Film> getPopular(int count) {
-        return new ArrayList<>(filmStorage.getPopular(count));
-    }
-
+    /**
+     * Валидация полей фильма:
+     * - имя не пустое,
+     * - описание ≤200 символов,
+     * - дата выхода ≥28.12.1895,
+     * - длительность >0.
+     */
     private void validateFilm(Film film) {
         if (film.getName() == null || film.getName().isBlank()) {
-            throw new ValidationException("Name must not be blank");
+            throw new ValidationException("Название фильма не может быть пустым");
         }
-        if (film.getDescription() == null || film.getDescription().length() > 200) {
+        if (film.getDescription() != null
+                && film.getDescription().length() > 200) {
             throw new ValidationException("Description must be up to 200 characters");
         }
-        if (film.getReleaseDate() == null
-                || film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
+        if (film.getReleaseDate().isBefore(LocalDate.of(1895, 12, 28))) {
             throw new ValidationException("Release date must be on or after 1895-12-28");
         }
         if (film.getDuration() <= 0) {
-            throw new ValidationException("Duration must be positive");
+            throw new ValidationException("Продолжительность должна быть положительной");
         }
     }
 }
