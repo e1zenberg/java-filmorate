@@ -9,11 +9,18 @@ import ru.yandex.practicum.filmorate.model.Film;
 import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Mpa;
 
-import java.sql.*;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 
+/**
+ * Хранилище фильмов на базе JDBC.
+ */
 @Component
 public class JdbcFilmStorage {
 
@@ -23,11 +30,23 @@ public class JdbcFilmStorage {
         this.jdbcTemplate = jdbcTemplate;
     }
 
+    /**
+     * Получить все фильмы.
+     *
+     * @return список всех фильмов
+     */
     public List<Film> getAllFilms() {
         String sql = "SELECT film_id, name, description, release_date, duration, mpa_id FROM films";
         return jdbcTemplate.query(sql, this::mapRowToFilm);
     }
 
+    /**
+     * Получить фильм по идентификатору.
+     *
+     * @param id идентификатор фильма
+     * @return найденный фильм
+     * @throws NotFoundException если фильм не найден
+     */
     public Film getFilmById(long id) {
         String sql = "SELECT film_id, name, description, release_date, duration, mpa_id FROM films WHERE film_id = ?";
         List<Film> list = jdbcTemplate.query(sql, this::mapRowToFilm, id);
@@ -37,6 +56,12 @@ public class JdbcFilmStorage {
         return list.get(0);
     }
 
+    /**
+     * Добавить фильм.
+     *
+     * @param film объект фильма
+     * @return добавленный фильм с заполненным ID
+     */
     public Film addFilm(Film film) {
         String sql = "INSERT INTO films (name, description, release_date, duration, mpa_id) VALUES (?, ?, ?, ?, ?)";
         KeyHolder keyHolder = new GeneratedKeyHolder();
@@ -56,6 +81,13 @@ public class JdbcFilmStorage {
         return film;
     }
 
+    /**
+     * Обновить данные фильма.
+     *
+     * @param film объект фильма с новыми данными
+     * @return обновленный фильм
+     * @throws NotFoundException если фильм не найден
+     */
     public Film updateFilm(Film film) {
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, mpa_id = ? WHERE film_id = ?";
         int updated = jdbcTemplate.update(sql,
@@ -73,16 +105,37 @@ public class JdbcFilmStorage {
     }
 
     // --- Лайки ---
+
+    /**
+     * Добавить лайк фильму от пользователя.
+     *
+     * @param filmId идентификатор фильма
+     * @param userId идентификатор пользователя
+     */
     public void addLike(long filmId, long userId) {
         String sql = "INSERT INTO likes (film_id, user_id) VALUES (?, ?)";
         jdbcTemplate.update(sql, filmId, userId);
     }
 
+    /**
+     * Удалить лайк фильма от пользователя.
+     *
+     * @param filmId идентификатор фильма
+     * @param userId идентификатор пользователя
+     */
     public void removeLike(long filmId, long userId) {
         String sql = "DELETE FROM likes WHERE film_id = ? AND user_id = ?";
         jdbcTemplate.update(sql, filmId, userId);
     }
+
     // --- Популярные фильмы ---
+
+    /**
+     * Получить топ популярных фильмов.
+     *
+     * @param count количество фильмов
+     * @return список популярных фильмов
+     */
     public List<Film> getPopular(int count) {
         String sql =
                 "SELECT f.film_id, f.name, f.description, f.release_date, f.duration, f.mpa_id " +
