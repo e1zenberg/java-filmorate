@@ -9,9 +9,13 @@ import java.util.List;
  * Интерфейс хранилища фильмов: CRUD + лайки + популярные.
  */
 public interface FilmStorage {
+
     Film addFilm(Film film);
+
     Film updateFilm(Film film);
+
     Collection<Film> getAllFilms();
+
     Film getFilmById(int id);
 
     /** Добавить лайк от пользователя к фильму */
@@ -22,4 +26,5 @@ public interface FilmStorage {
 
     /** Вернуть топ-N популярных фильмов */
     List<Film> getPopular(int count);
+
 }
