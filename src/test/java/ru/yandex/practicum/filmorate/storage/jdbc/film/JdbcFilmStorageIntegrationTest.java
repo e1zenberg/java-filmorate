@@ -21,7 +21,7 @@ import static org.assertj.core.api.Assertions.*;
  * Перед каждым тестом подгружаем schema.sql + data.sql.
  */
 @JdbcTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@AutoConfigureTestDatabase           // используем H2 In-Memory для тестов, а не файловую
 @Import(JdbcFilmStorage.class)
 @Sql({"/schema.sql", "/data.sql"})
 @DisplayName("Интеграционные тесты JdbcFilmStorage")
@@ -50,7 +50,7 @@ class JdbcFilmStorageIntegrationTest {
                 .build();
 
         Film saved = filmStorage.addFilm(newFilm);
-        int savedId = (int) saved.getId();   // примитив long приводим к int
+        int savedId = (int) saved.getId();
         Film fetched = filmStorage.getFilmById(savedId);
 
         assertThat(fetched).usingRecursiveComparison().isEqualTo(saved);

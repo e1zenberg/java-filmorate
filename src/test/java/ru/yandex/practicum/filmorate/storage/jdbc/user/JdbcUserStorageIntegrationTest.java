@@ -19,7 +19,7 @@ import static org.assertj.core.api.Assertions.*;
  * DAO-интеграционные тесты для JdbcUserStorage.
  */
 @JdbcTest
-@AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
+@AutoConfigureTestDatabase           // разрешаем Spring заменить DataSource на встроенную H2 In-Memory
 @Import(JdbcUserStorage.class)
 @Sql({"/schema.sql", "/data.sql"})
 @DisplayName("Интеграционные тесты JdbcUserStorage")
