@@ -10,6 +10,7 @@ import java.util.List;
 @RequestMapping("/films")
 public class FilmController {
     private final FilmService filmService;
+    private static final String LIKE_PATH = "/{id}/like/{userId}";
 
     public FilmController(FilmService filmService) {
         this.filmService = filmService;
@@ -35,12 +36,12 @@ public class FilmController {
         return filmService.getFilmById(id);
     }
 
-    @PutMapping("/{id}/like/{userId}")
+    @PutMapping(LIKE_PATH)
     public void addLike(@PathVariable int id, @PathVariable int userId) {
         filmService.addLike(id, userId);
     }
 
-    @DeleteMapping("/{id}/like/{userId}")
+    @DeleteMapping(LIKE_PATH)
     public void removeLike(@PathVariable int id, @PathVariable int userId) {
         filmService.removeLike(id, userId);
     }
