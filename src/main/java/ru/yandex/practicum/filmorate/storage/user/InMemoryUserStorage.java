@@ -1,28 +1,28 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
 import org.springframework.stereotype.Component;
-import ru.yandex.practicum.filmorate.exception.NotFoundException;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
- * Реализация UserStorage на основе in-memory HashMap.
+ * In-memory реализация UserStorage с поддержкой дружбы (односторонней).
  */
-@Component  // Позволяет Spring найти и внедрить это хранилище
+@Component
 public class InMemoryUserStorage implements UserStorage {
+
     private final Map<Integer, User> users = new HashMap<>();
-    private final AtomicInteger idGen = new AtomicInteger(0);  // Генератор уникальных ID
+    private final Map<Integer, Set<Integer>> friends = new HashMap<>();
+    private final AtomicInteger idGenerator = new AtomicInteger();
 
     @Override
     public User addUser(User user) {
-        validate(user);  // Проверяем корректность полей пользователей перед сохранением
-        int id = idGen.incrementAndGet();  // Получаем следующий уникальный id
+        validateUser(user);
+        int id = idGenerator.incrementAndGet();
         user.setId(id);
         users.put(id, user);
         return user;
@@ -30,13 +30,12 @@ public class InMemoryUserStorage implements UserStorage {
 
     @Override
     public User updateUser(User user) {
-        validate(user);  // Проверяем корректность полей перед обновлением
+        validateUser(user);
         int id = user.getId();
         if (!users.containsKey(id)) {
-            // Если пользователя с таким ID нет в хранилище, выбрасываем NotFoundException
-            throw new NotFoundException("User with id=" + id + " not found");
+            throw new ValidationException("User with id=" + id + " not found");
         }
-        users.put(id, user);  // Обновляем данные существующего пользователя
+        users.put(id, user);
         return user;
     }
 
@@ -49,25 +48,61 @@ public class InMemoryUserStorage implements UserStorage {
     public User getUserById(int id) {
         User user = users.get(id);
         if (user == null) {
-            // Если пользователя с указанным ID нет, выбрасываем NotFoundException
-            throw new NotFoundException("User with id=" + id + " not found");
+            throw new ValidationException("User with id=" + id + " not found");
         }
         return user;
     }
 
-    // Вспомогательный метод для валидации полей User перед добавлением/обновлением
-    private void validate(User user) {
-        if (user.getEmail() == null || user.getEmail().isBlank() || !user.getEmail().contains("@")) {
-            throw new ValidationException("Email must contain '@' and not be empty");
+    @Override
+    public void addFriend(int userId, int friendId) {
+        // Проверяем существование обоих пользователей
+        getUserById(userId);
+        getUserById(friendId);
+        friends
+                .computeIfAbsent(userId, k -> new HashSet<>())
+                .add(friendId);
+    }
+
+    @Override
+    public void removeFriend(int userId, int friendId) {
+        Set<Integer> set = friends.get(userId);
+        if (set != null) {
+            set.remove(friendId);
+        }
+    }
+
+    @Override
+    public List<User> getFriends(int userId) {
+        getUserById(userId); // проверка существования
+        return Optional.ofNullable(friends.get(userId))
+                .orElse(Collections.emptySet())
+                .stream()
+                .map(this::getUserById)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<User> getCommonFriends(int userId, int otherUserId) {
+        getUserById(userId);
+        getUserById(otherUserId);
+        Set<Integer> set1 = friends.getOrDefault(userId, Collections.emptySet());
+        Set<Integer> set2 = friends.getOrDefault(otherUserId, Collections.emptySet());
+        return set1.stream()
+                .filter(set2::contains)
+                .map(this::getUserById)
+                .collect(Collectors.toList());
+    }
+
+    private void validateUser(User user) {
+        if (user.getEmail() == null || !user.getEmail().contains("@")) {
+            throw new ValidationException("Email должен содержать символ '@'");
         }
         if (user.getLogin() == null || user.getLogin().isBlank() || user.getLogin().contains(" ")) {
-            throw new ValidationException("Login must not be empty or contain spaces");
+            throw new ValidationException("Логин не должен быть пустым или содержать пробелы");
         }
-        if (user.getName() == null || user.getName().isBlank()) {
-            user.setName(user.getLogin());  // Если имя не задано, используем логин
-        }
-        if (user.getBirthday() == null || user.getBirthday().isAfter(LocalDate.now())) {
-            throw new ValidationException("Birthday must be in the past");
+        LocalDate bd = user.getBirthday();
+        if (bd != null && bd.isAfter(LocalDate.now())) {
+            throw new ValidationException("Дата рождения не может быть в будущем");
         }
     }
 }

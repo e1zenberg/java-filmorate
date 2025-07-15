@@ -6,26 +6,26 @@ import ru.yandex.practicum.filmorate.model.Film;
 
 import java.time.LocalDate;
 import java.time.Month;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
-//Реализация FilmStorage на основе in-memory HashMap.
-
-@Component  // Позволяет Spring найти и внедрить это хранилище
+/**
+ * In-memory хранилище фильмов с поддержкой лайков.
+ */
+@Component
 public class InMemoryFilmStorage implements FilmStorage {
     private final Map<Integer, Film> films = new HashMap<>();
-    private final AtomicInteger idGen = new AtomicInteger(0);  // Генератор уникальных ID
+    private final Map<Integer, Set<Integer>> likes = new HashMap<>();
+    private final AtomicInteger idGen = new AtomicInteger(0);
 
-    // Первая дата показа фильма в истории
     private static final LocalDate FIRST_CINEMA_DATE =
             LocalDate.of(1895, Month.DECEMBER, 28);
 
     @Override
     public Film addFilm(Film film) {
-        validate(film);  // Проверяем корректность всех полей фильма перед сохранением в хранилище
-        int id = idGen.incrementAndGet();  // Получаем следующий уникальный идентификатор для фильма
+        validate(film);
+        int id = idGen.incrementAndGet();
         film.setId(id);
         films.put(id, film);
         return film;
@@ -33,12 +33,12 @@ public class InMemoryFilmStorage implements FilmStorage {
 
     @Override
     public Film updateFilm(Film film) {
-        validate(film);  // Проверяем корректность всех полей фильма перед обновлением существующей записи
-        int id = film.getId(); // Извлекаем ID фильма для поиска
+        validate(film);
+        int id = (int) film.getId();
         if (!films.containsKey(id)) {
             throw new ValidationException("Film with id=" + id + " not found");
         }
-        films.put(id, film); // Обновляем данные фильма по ключу id
+        films.put(id, film);
         return film;
     }
 
@@ -56,15 +56,39 @@ public class InMemoryFilmStorage implements FilmStorage {
         return film;
     }
 
-    // Вспомогательный метод для валидации полей Film
+    @Override
+    public void addLike(int filmId, int userId) {
+        // проверка, что фильм существует
+        getFilmById(filmId);
+        likes.computeIfAbsent(filmId, k -> new HashSet<>()).add(userId);
+    }
+
+    @Override
+    public void removeLike(int filmId, int userId) {
+        Optional.ofNullable(likes.get(filmId)).ifPresent(set -> set.remove(userId));
+    }
+
+    @Override
+    public List<Film> getPopular(int count) {
+        return films.values().stream()
+                .sorted((f1, f2) -> {
+                    int l1 = likes.getOrDefault((int) f1.getId(), Collections.emptySet()).size();
+                    int l2 = likes.getOrDefault((int) f2.getId(), Collections.emptySet()).size();
+                    return Integer.compare(l2, l1);
+                })
+                .limit(count)
+                .collect(Collectors.toList());
+    }
+
     private void validate(Film film) {
         if (film.getName() == null || film.getName().isBlank()) {
             throw new ValidationException("Name must not be empty");
         }
-        if (film.getDescription() != null && film.getDescription().length() > 200) {
-            throw new ValidationException("Description must be <=200 characters");
+        if (film.getDescription() != null && film.getDescription().length() > 1000) {
+            throw new ValidationException("Description must be <=1000 characters");
         }
-        if (film.getReleaseDate() == null || film.getReleaseDate().isBefore(FIRST_CINEMA_DATE)) {
+        if (film.getReleaseDate() == null
+                || film.getReleaseDate().isBefore(FIRST_CINEMA_DATE)) {
             throw new ValidationException("Release date must be after 1895-12-28");
         }
         if (film.getDuration() <= 0) {

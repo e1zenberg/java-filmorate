@@ -1,38 +1,29 @@
 package ru.yandex.practicum.filmorate.storage.user;
 
-
 import ru.yandex.practicum.filmorate.model.User;
 import java.util.Collection;
+import java.util.List;
 
-/**
- * Интерфейс для хранилища пользователей.
- * Определяет базовые CRUD-операции.
- */
+// Интерфейс хранилища пользователей: CRUD + дружба (односторонняя).
 public interface UserStorage {
 
-    /**
-     * Сохраняет нового пользователя в хранилище.
-     * @param user объект пользователя без id
-     * @return тот же объект, но с присвоенным id
-     */
     User addUser(User user);
 
-    /**
-     * Обновляет данные существующего пользователя.
-     * @param user объект пользователя с уже существующим id
-     * @return обновлённый объект
-     */
     User updateUser(User user);
 
-    /**
-     * Возвращает список всех пользователей.
-     */
     Collection<User> getAllUsers();
 
-    /**
-     * Возвращает пользователя по его id.
-     * @param id идентификатор пользователя
-     * @throws ru.yandex.practicum.filmorate.exception.NotFoundException если пользователь не найден
-     */
     User getUserById(int id);
+
+    // Добавить в друзья (односторонне)
+    void addFriend(int userId, int friendId);
+
+    // Убрать из друзей
+    void removeFriend(int userId, int friendId);
+
+    // Список всех друзей пользователя
+    List<User> getFriends(int userId);
+
+    // Список общих друзей двух пользователей
+    List<User> getCommonFriends(int userId, int otherUserId);
 }
